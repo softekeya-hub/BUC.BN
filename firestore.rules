@@ -1,0 +1,218 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'softekeya@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    // 3. Entity Validation Blueprints (Anti-Update-Gap)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'phoneNumber', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 20))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+        'orderId', 'userId', 'customerName', 'customerPhone',
+        'fulfilmentMethod', 'deliveryArea', 'paymentMethod',
+        'subtotalKes', 'deliveryFeeKes', 'totalKes',
+        'itemsCount', 'itemsSummary', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'orderId', 'userId', 'customerName', 'customerPhone',
+        'fulfilmentMethod', 'deliveryArea', 'paymentMethod',
+        'subtotalKes', 'deliveryFeeKes', 'totalKes',
+        'itemsCount', 'itemsSummary', 'status',
+        'mpesaCheckoutRequestId', 'mpesaReceiptNumber',
+        'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.orderId)
+      && isValidId(data.userId)
+      && data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 120
+      && data.customerPhone is string && data.customerPhone.size() == 12 && data.customerPhone.matches('^254[17][0-9]{8}$')
+      && data.fulfilmentMethod is string && data.fulfilmentMethod in ['pickup', 'boda']
+      && data.deliveryArea is string && data.deliveryArea.size() >= 2 && data.deliveryArea.size() <= 120
+      && data.paymentMethod is string && data.paymentMethod in ['mpesa', 'card', 'whatsapp']
+      && data.subtotalKes is number && data.subtotalKes >= 0 && data.subtotalKes <= 500000
+      && data.deliveryFeeKes is number && data.deliveryFeeKes >= 0 && data.deliveryFeeKes <= 10000
+      && data.totalKes is number && data.totalKes >= 0 && data.totalKes <= 510000
+      && data.itemsCount is number && data.itemsCount >= 1 && data.itemsCount <= 200
+      && data.itemsSummary is string && data.itemsSummary.size() >= 2 && data.itemsSummary.size() <= 2000
+      && data.status is string && data.status in ['pending_payment', 'paid', 'ready_for_pickup', 'dispatched', 'completed', 'failed']
+      && (!('mpesaCheckoutRequestId' in data) || (data.mpesaCheckoutRequestId is string && data.mpesaCheckoutRequestId.size() <= 128))
+      && (!('mpesaReceiptNumber' in data) || (data.mpesaReceiptNumber is string && data.mpesaReceiptNumber.size() <= 64))
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidMpesaTransaction(data) {
+      return data.keys().hasAll([
+        'transactionId', 'orderId', 'userId', 'merchantRequestId', 'checkoutRequestId',
+        'phoneNumber', 'amountKes', 'accountReference', 'transactionDesc',
+        'status', 'resultCode', 'resultDesc', 'mode', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'transactionId', 'orderId', 'userId', 'merchantRequestId', 'checkoutRequestId',
+        'phoneNumber', 'amountKes', 'accountReference', 'transactionDesc',
+        'status', 'resultCode', 'resultDesc', 'mpesaReceiptNumber', 'transactionTimestamp',
+        'mode', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.transactionId)
+      && isValidId(data.orderId)
+      && isValidId(data.userId)
+      && data.merchantRequestId is string && data.merchantRequestId.size() >= 2 && data.merchantRequestId.size() <= 128
+      && data.checkoutRequestId is string && data.checkoutRequestId.size() >= 2 && data.checkoutRequestId.size() <= 128
+      && data.phoneNumber is string && data.phoneNumber.size() == 12 && data.phoneNumber.matches('^254[17][0-9]{8}$')
+      && data.amountKes is number && data.amountKes >= 1 && data.amountKes <= 510000
+      && data.accountReference is string && data.accountReference.size() >= 1 && data.accountReference.size() <= 64
+      && data.transactionDesc is string && data.transactionDesc.size() >= 1 && data.transactionDesc.size() <= 160
+      && data.status is string && data.status in ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED']
+      && data.resultCode is number
+      && data.resultDesc is string && data.resultDesc.size() >= 1 && data.resultDesc.size() <= 255
+      && (!('mpesaReceiptNumber' in data) || (data.mpesaReceiptNumber is string && data.mpesaReceiptNumber.size() <= 64))
+      && (!('transactionTimestamp' in data) || (data.transactionTimestamp is string && data.transactionTimestamp.size() <= 40))
+      && data.mode is string && data.mode in ['sandbox_daraja', 'live_daraja']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'role', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.role is string && data.role == 'admin'
+        && data.createdAt is timestamp;
+    }
+
+    // 4. Collection Rules
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrapAdmin();
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == userId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phoneNumber', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isVerifiedUser() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(orderId)
+        && isVerifiedUser()
+        && isValidOrder(incoming())
+        && incoming().orderId == orderId
+        && incoming().userId == request.auth.uid
+        && incoming().status in ['pending_payment', 'paid']
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(orderId)
+        && isVerifiedUser()
+        && isValidOrder(incoming())
+        && incoming().orderId == existing().orderId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid
+            && !(existing().status in ['completed', 'failed'])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'mpesaCheckoutRequestId', 'mpesaReceiptNumber', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(orderId) && isAdmin();
+    }
+
+    match /mpesa_transactions/{transactionId} {
+      allow get: if isValidId(transactionId) && isVerifiedUser() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(transactionId)
+        && isVerifiedUser()
+        && isValidMpesaTransaction(incoming())
+        && incoming().transactionId == transactionId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/orders/$(incoming().orderId))
+        && get(/databases/$(database)/documents/orders/$(incoming().orderId)).data.userId == request.auth.uid;
+      allow update: if isValidId(transactionId)
+        && isVerifiedUser()
+        && isValidMpesaTransaction(incoming())
+        && incoming().transactionId == existing().transactionId
+        && incoming().orderId == existing().orderId
+        && incoming().userId == existing().userId
+        && incoming().amountKes == existing().amountKes
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid
+            && !(existing().status in ['COMPLETED', 'FAILED', 'CANCELLED'])
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'resultCode', 'resultDesc', 'mpesaReceiptNumber', 'transactionTimestamp', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(transactionId) && isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isAdmin();
+      allow list: if isBootstrapAdmin();
+      allow create, update: if isValidId(adminId) && isBootstrapAdmin() && isValidAdminUser(incoming());
+      allow delete: if isValidId(adminId) && isBootstrapAdmin();
+    }
+  }
+}

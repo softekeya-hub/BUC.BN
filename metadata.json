@@ -1,0 +1,6 @@
+{
+  "name": "Banana Uniform Centre",
+  "description": "School uniforms, complete boys and girls kits, 3-angle uniform previews, and M-Pesa Express checkout in Banana Hill along Ruaka-Limuru Road, Kiambu County.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

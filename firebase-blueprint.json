@@ -1,0 +1,279 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated parent or shop staff profile stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "phoneNumber": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "School uniform order containing school kits, fulfilment details, and payment status.",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "customerPhone": {
+          "type": "string",
+          "pattern": "^254[17][0-9]{8}$",
+          "maxLength": 15
+        },
+        "fulfilmentMethod": {
+          "type": "string",
+          "enum": ["pickup", "boda"],
+          "maxLength": 20
+        },
+        "deliveryArea": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["mpesa", "card", "whatsapp"],
+          "maxLength": 20
+        },
+        "subtotalKes": {
+          "type": "number"
+        },
+        "deliveryFeeKes": {
+          "type": "number"
+        },
+        "totalKes": {
+          "type": "number"
+        },
+        "itemsCount": {
+          "type": "number"
+        },
+        "itemsSummary": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending_payment", "paid", "ready_for_pickup", "dispatched", "completed", "failed"],
+          "maxLength": 30
+        },
+        "mpesaCheckoutRequestId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "mpesaReceiptNumber": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "orderId",
+        "userId",
+        "customerName",
+        "customerPhone",
+        "fulfilmentMethod",
+        "deliveryArea",
+        "paymentMethod",
+        "subtotalKes",
+        "deliveryFeeKes",
+        "totalKes",
+        "itemsCount",
+        "itemsSummary",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MpesaTransaction": {
+      "title": "MpesaTransaction",
+      "description": "M-Pesa STK Push transaction audit record linked to a school uniform order.",
+      "type": "object",
+      "properties": {
+        "transactionId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "orderId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "merchantRequestId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "checkoutRequestId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "phoneNumber": {
+          "type": "string",
+          "pattern": "^254[17][0-9]{8}$",
+          "maxLength": 15
+        },
+        "amountKes": {
+          "type": "number"
+        },
+        "accountReference": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "transactionDesc": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "COMPLETED", "FAILED", "CANCELLED"],
+          "maxLength": 20
+        },
+        "resultCode": {
+          "type": "number"
+        },
+        "resultDesc": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "mpesaReceiptNumber": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "transactionTimestamp": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["sandbox_daraja", "live_daraja"],
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "transactionId",
+        "orderId",
+        "userId",
+        "merchantRequestId",
+        "checkoutRequestId",
+        "phoneNumber",
+        "amountKes",
+        "accountReference",
+        "transactionDesc",
+        "status",
+        "resultCode",
+        "resultDesc",
+        "mode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Shop administrator role record.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"],
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private parent/customer profiles isolated per authenticated UID."
+    },
+    "/orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/Order"
+      },
+      "description": "Uniform orders linked to owner userId and M-Pesa checkout reference."
+    },
+    "/mpesa_transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/MpesaTransaction"
+      },
+      "description": "M-Pesa STK Push and callback transaction logs linked to orderId and userId."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Authorized Banana Uniform Centre shop administrators."
+    }
+  }
+}
